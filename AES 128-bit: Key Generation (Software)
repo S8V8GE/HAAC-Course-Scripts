@@ -1,0 +1,29 @@
+"""
+    Author:     James Savage
+    Date:       5th February 2025
+
+    Disclaimer:
+    -----------
+    This Python script is provided for educational purposes only, demonstrating 
+    AES 128-bit key generation (software). It is intended solely for 
+    learning and illustrative use and should not be used in any commercial, 
+    production, or security-critical environment.
+    
+    This script does not replicate the exact process of AES 128-bit key generation (software), 
+    nor does it expose any vulnerabilities or sensitive information.
+
+    This script is not affiliated with, endorsed by, or the responsibility of any 
+    employer or organization. Use it at your own risk, and always follow best 
+    practices when implementing cryptographic techniques.
+"""
+
+from Crypto.Random import get_random_bytes
+
+# Generate an AES 128-bit key in HEX format (16 bytes)
+aes_key = get_random_bytes(16)
+
+# Convert to Hexadecimal and make it uppercase
+hex_key = aes_key.hex().upper()
+
+# Print the key to console
+print("Generated AES 128 key:", hex_key)
