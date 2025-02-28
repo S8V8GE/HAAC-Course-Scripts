@@ -4,11 +4,17 @@
 
     Disclaimer:
     -----------
-    This Python script is provided for educational purposes only, demonstrating text hashing using SHA-512.
-    It is intended solely for learning and illustrative use and should not be used in any commercial, production, or security-critical environment.
+    This Python script is provided for educational purposes only, demonstrating 
+    text hashing using SHA-512. It is intended solely for 
+    learning and illustrative use and should not be used in any commercial, 
+    production, or security-critical environment.
 
-    This script is not affiliated with, endorsed by, or the responsibility of any employer or organization.
-    Use it at your own risk, and always follow best practices when implementing cryptographic techniques.
+    This script does not replicate the exact process of SHA-512 implementation, 
+    nor does it expose any vulnerabilities or sensitive information.
+
+    This script is not affiliated with, endorsed by, or the responsibility of any 
+    employer or organization. Use it at your own risk, and always follow best 
+    practices when implementing cryptographic techniques.
 """
 
 import hashlib
