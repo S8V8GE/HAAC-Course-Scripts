@@ -1,0 +1,118 @@
+"""
+    Author:     James Savage
+    Date:       5th February 2025
+
+    Disclaimer:
+    -----------
+    This Python script is provided for educational purposes only, demonstrating 
+    key diversification to AN10922. It is intended solely for 
+    learning and illustrative use and should not be used in any commercial, 
+    production, or security-critical environment.
+    
+    This script does not replicate the exact process of key diversification to AN10922, 
+    nor does it expose any vulnerabilities or sensitive information.
+
+    This script is not affiliated with, endorsed by, or the responsibility of any 
+    employer or organization. Use it at your own risk, and always follow best 
+    practices when implementing cryptographic techniques.
+"""
+
+
+from Crypto.Cipher import AES
+from Crypto.Util.Padding import pad
+
+# Left shift and subkey derivation functions
+def left_shift(data):
+    shifted = int.from_bytes(data, byteorder='big') << 1
+    return (shifted & 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF).to_bytes(16, byteorder='big')
+
+def derive_subkeys(key):
+    Rb = 0x87
+    aes = AES.new(key, AES.MODE_ECB)
+
+    # Step 1: Generate L
+    L = aes.encrypt(b'\x00' * 16)
+
+    # Step 2: Derive K1
+    if L[0] & 0x80:  # Check MSB of L
+        K1 = left_shift(L)
+        K1 = bytearray(K1)
+        K1[-1] ^= Rb
+    else:
+        K1 = left_shift(L)
+
+    # Step 3: Derive K2
+    if K1[0] & 0x80:  # Check MSB of K1
+        K2 = left_shift(K1)
+        K2 = bytearray(K2)
+        K2[-1] ^= Rb
+    else:
+        K2 = left_shift(K1)
+
+    return K1, K2
+
+# Define initial AN10922 variables
+master_key = bytes.fromhex("D5A36CF065E7F4516748FB313187C6C8")  # Master Key (16 bytes)
+uid = bytes.fromhex("805fdf2a442804")  # UID (7 bytes)
+iv = bytes.fromhex("00000000000000000000000000000000")  # IV (16 bytes)
+private_id = bytes.fromhex("000000000000000000000000BEEFBABE")  # Private ID (16 bytes)
+aid = bytes.fromhex("BADB01")  # Application ID (3 bytes)
+key_number = bytes.fromhex("01")  # Key Number (1 byte)
+padding = bytes.fromhex("1122334455800000000000000000000000000000")  # Padding (20 bytes)
+sub_key = bytes.fromhex("02")  # Key Number (1 byte) - can be 01 (SubK_1) or 02 (SubK_2)
+
+# Reverse UID and AID as per AN10922 specification
+def reverse_bytes(data):
+    reversed_data = data[::-1]
+    print(f"Reversed {data.hex().upper()} to {reversed_data.hex().upper()}")
+    return reversed_data
+
+reversed_uid = reverse_bytes(uid)
+reversed_aid = reverse_bytes(aid)
+
+# Build the diversification data (32 bytes total)
+diversification_data = bytes([0x01]) + reversed_uid + reversed_aid + key_number + padding
+print(f"Diversification Data (before padding): {diversification_data.hex().upper()}")
+print(f"Total Length of Diversification Data: {len(diversification_data)}")
+assert len(diversification_data) == 32  # Ensure it's exactly 32 bytes
+
+# Derive sub keys (SubK_1 and SubK_2)
+SubK_1, SubK_2 = derive_subkeys(master_key)
+print(f"SubK_1 (raw): {SubK_1.hex().upper()}")
+print(f"SubK_2 (raw): {SubK_2.hex().upper()}")
+
+# Prepend the 00 padding to the sub keys to make them 32 bytes long
+SubK_1_padded = b'\x00' * (32 - len(SubK_1)) + SubK_1  # Prepend 00 padding to make it 32 bytes
+SubK_2_padded = b'\x00' * (32 - len(SubK_2)) + SubK_2  # Prepend 00 padding to make it 32 bytes
+
+print(f"SubK_1 (padded before XOR): {SubK_1_padded.hex().upper()}")
+print(f"SubK_2 (padded before XOR): {SubK_2_padded.hex().upper()}")
+
+# XOR the padded subkey (using the correct sub key) and diversification data
+if sub_key == bytes.fromhex("01"):
+    diversification_data_output = bytes(a ^ b for a, b in zip(diversification_data, SubK_1_padded))
+    print(f"Diversification Data Output (after XOR): {diversification_data_output.hex().upper()}")
+elif sub_key == bytes.fromhex("02"):
+    diversification_data_output = bytes(a ^ b for a, b in zip(diversification_data, SubK_2_padded))
+    print(f"Diversification Data Output (after XOR): {diversification_data_output.hex().upper()}")
+else:
+    print(f"sub_key can only be 01 or 02, actual value: {sub_key.hex().upper()}")
+    print("*** Exiting Script ***")
+    exit()  # Exit the program here
+
+# Remove padding to ensure that we only use the 32-byte data
+# Encrypt the diversification data output using AES CBC mode
+cipher = AES.new(master_key, AES.MODE_CBC, iv)
+
+# No need for padding if it's already 32 bytes
+if len(diversification_data_output) % 16 != 0:
+    encrypted = cipher.encrypt(pad(diversification_data_output, 16))
+else:
+    encrypted = cipher.encrypt(diversification_data_output)
+
+# Show the encrypted result
+print(f"Encrypted (CBC mode): {encrypted.hex().upper()}")
+
+# Extract the last 16 bytes as the diversified key
+diversified_key = encrypted[-16:]
+print(f"Diversified Key (last 16 bytes): {diversified_key.hex().upper()}")
