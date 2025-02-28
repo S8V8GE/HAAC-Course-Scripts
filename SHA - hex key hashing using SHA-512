@@ -1,0 +1,34 @@
+"""
+    Author:     James Savage
+    Date:       5th February 2025
+
+    Disclaimer:
+    -----------
+    This Python script is provided for educational purposes only, demonstrating 
+    SHA-512 hashing of a Hexadecimal AES 128-bit key. It is intended solely for 
+    learning and illustrative use and should not be used in any commercial, 
+    production, or security-critical environment.
+
+    This script does not replicate the exact process of SHA-512 implementation, 
+    nor does it expose any vulnerabilities or sensitive information.
+
+    This script is not affiliated with, endorsed by, or the responsibility of any 
+    employer or organization. Use it at your own risk, and always follow best 
+    practices when implementing cryptographic techniques.
+"""
+
+import hashlib
+
+# Enter the AES key input (16 x hex characters) to work out the SHA Digest
+aes_key = "D5A36CF065E7F4516748FB313187C6C8"
+
+# Hashing the AES Key using SHA-512
+sha512_hash = hashlib.sha512(bytes.fromhex(aes_key)).hexdigest().upper()
+
+# Extracting the first 6 hex characters (24 bits) from the SHA-512 hash
+truncated_hash = sha512_hash[:6].upper()
+
+# Display the results
+print(f"Key:                                               {aes_key}")
+print(f"SHA-512 Hash of the Key:                           {sha512_hash}")
+print (f"Truncated SHA-512 Hash of the Key (first 3 bytes): {truncated_hash}")
