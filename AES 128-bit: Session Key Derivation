@@ -1,0 +1,67 @@
+"""
+    Author:     James Savage
+    Date:       5th February 2025
+
+    Disclaimer:
+    -----------
+    This Python script is provided for educational purposes only, demonstrating 
+    session key derivation. It is intended solely for 
+    learning and illustrative use and should not be used in any commercial, 
+    production, or security-critical environment.
+    
+    This script does not replicate the exact process of session key derivation, 
+    nor does it expose any vulnerabilities or sensitive information.
+
+    This script is not affiliated with, endorsed by, or the responsibility of any 
+    employer or organization. Use it at your own risk, and always follow best 
+    practices when implementing cryptographic techniques.
+"""
+
+from Crypto.Protocol.KDF import PBKDF2
+from Crypto.Cipher import AES
+import binascii
+from Crypto.Random import get_random_bytes
+
+# Define the master key (32 hex characters)
+master_key = b"D5A36CF065E7F4516748FB313187C6C8"  # 16-byte master key
+
+# Generate a random salt (16 bytes)
+salt = get_random_bytes(16)  # Random salt
+
+# Derive the session key using PBKDF2 (HMAC-based key derivation)
+# Note: this is just giving an example, while PBKDF2 is a valid key derivation function, MIFARE DESFire does not use PBKDF2. Instead, it derives session keys via a challenge-response mechanism using random numbers (RND_A and RND_B).
+# The salt is random, so the session key will be unique each time
+# Set dkLen to 16 to get a 16-byte session key
+session_key = PBKDF2(master_key, salt, dkLen=16, count=10000)
+
+# Print the master key, random salt, and derived session key
+print(f"Master Key: {master_key.decode()}")  # This will print the master key from above
+print(f"Salt: {binascii.hexlify(salt).decode()}")  # Hex-encoded salt
+print(f"Derived Session Key: {binascii.hexlify(session_key).decode()}")  # Hex-encoded session key
+
+# Example of data to encrypt and decrypt (16-byte data)
+data = bytes.fromhex("000000000000000000000000BEEFBABE")  # 16-byte data
+print("Data before Encryption:", binascii.hexlify(data).decode().upper())
+
+# Set the Initialization Vector (IV) - Default is 16 zero bytes
+iv = bytes.fromhex("00000000000000000000000000000000")  # 16-byte zero IV
+
+# Create AES cipher object in CBC mode with the session key and IV
+cipher = AES.new(session_key, AES.MODE_CBC, iv)
+
+# Encrypt the data
+encrypted = cipher.encrypt(data)
+
+# Print the encrypted data
+print("Encrypted Data (CBC):", binascii.hexlify(encrypted).decode().upper())
+
+# ---- Decryption Process ----
+
+# Create AES cipher object in CBC mode with the same session key and IV for decryption
+decipher = AES.new(session_key, AES.MODE_CBC, iv)
+
+# Decrypt the encrypted data
+decrypted = decipher.decrypt(encrypted)
+
+# Output the decrypted data as hexadecimal
+print("Decrypted Data:", binascii.hexlify(decrypted).decode().upper())
