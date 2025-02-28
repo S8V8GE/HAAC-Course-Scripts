@@ -1,0 +1,57 @@
+"""
+    Author:     James Savage
+    Date:       5th February 2025
+
+    Disclaimer:
+    -----------
+    This Python script is provided for educational purposes only, demonstrating
+    AES 128-bit sub key derivation. It is intended solely for
+    learning and illustrative use and should not be used in any commercial,
+    production, or security-critical environment.
+
+    This script does not replicate the exact process of SHA-512 implementation,
+    nor does it expose any vulnerabilities or sensitive information.
+
+    This script is not affiliated with, endorsed by, or the responsibility of any
+    employer or organization. Use it at your own risk, and always follow best
+    practices when implementing cryptographic techniques.
+"""
+
+from Crypto.Cipher import AES
+
+# FUNCTIONS
+def left_shift(data):
+    shifted = int.from_bytes(data, byteorder='big') << 1
+    return (shifted & 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF).to_bytes(16, byteorder='big')
+
+def derive_subkeys(key):
+    Rb = 0x87
+    aes = AES.new(key, AES.MODE_ECB)
+
+    # Step 1: Generate L
+    L = aes.encrypt(b'\x00' * 16)
+
+    # Step 2: Derive K1
+    if (L[0] & 0x80):  # Check MSB of L
+        K1 = left_shift(L)
+        K1 = bytearray(K1)
+        K1[-1] ^= Rb
+    else:
+        K1 = left_shift(L)
+
+    # Step 3: Derive K2
+    if (K1[0] & 0x80):  # Check MSB of K1
+        K2 = left_shift(K1)
+        K2 = bytearray(K2)
+        K2[-1] ^= Rb
+    else:
+        K2 = left_shift(K1)
+
+    return K1, K2
+
+# USER INPUT
+# Input Key (16 x hex characters)
+key = bytes.fromhex('D5A36CF065E7F4516748FB313187C6C8')
+SubK_1, SubK_2 = derive_subkeys(key)
+print("SubK_1:", SubK_1.hex().upper())
+print("SubK_2:", SubK_2.hex().upper())
