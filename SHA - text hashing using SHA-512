@@ -1,0 +1,27 @@
+"""
+    Author:     James Savage
+    Date:       5th February 2025
+
+    Disclaimer:
+    -----------
+    This Python script is provided for educational purposes only, demonstrating text hashing using SHA-512.
+    It is intended solely for learning and illustrative use and should not be used in any commercial, production, or security-critical environment.
+
+    This script is not affiliated with, endorsed by, or the responsibility of any employer or organization.
+    Use it at your own risk, and always follow best practices when implementing cryptographic techniques.
+"""
+
+import hashlib
+
+# Enter the text input
+text_input = "p@55w0Rd"
+
+# Convert text to bytes
+text_bytes = text_input.encode('utf-8')
+
+# Hashing the text using SHA-512
+sha_hash = hashlib.sha512(text_bytes).hexdigest().upper()
+
+# Display the results
+print(f"Input Text:                    {text_input}")
+print(f"SHA-512 Hash of the Input:     {sha_hash}")
