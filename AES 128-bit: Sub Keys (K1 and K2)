@@ -9,7 +9,7 @@
     learning and illustrative use and should not be used in any commercial,
     production, or security-critical environment.
 
-    This script does not replicate the exact process of SHA-512 implementation,
+    This script does not replicate the exact process of AES 128-bit sub key derivation,
     nor does it expose any vulnerabilities or sensitive information.
 
     This script is not affiliated with, endorsed by, or the responsibility of any
