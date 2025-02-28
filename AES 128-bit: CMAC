@@ -1,0 +1,45 @@
+"""
+    Author:     James Savage
+    Date:       5th February 2025
+
+    Disclaimer:
+    -----------
+    This Python script is provided for educational purposes only, demonstrating 
+    CMAC derivation. It is intended solely for 
+    learning and illustrative use and should not be used in any commercial, 
+    production, or security-critical environment.
+
+    This script does not replicate the exact process of CMAC derivation, 
+    nor does it expose any vulnerabilities or sensitive information.
+
+    This script is not affiliated with, endorsed by, or the responsibility of any 
+    employer or organization. Use it at your own risk, and always follow best 
+    practices when implementing cryptographic techniques.
+"""
+
+from Crypto.Cipher import AES
+from Crypto.Hash import CMAC
+import binascii
+
+# Define the AES key (32 hex characters) - this is usually the session key derived from the master key K
+key = bytes.fromhex("D5A36CF065E7F4516748FB313187C6C8")
+
+# Define the encrypted data that needs a CMAC, use my "AES 128-bit: Encrypt and Decrypt" and enter below the encrypted data from that script
+encrypted_data = bytes.fromhex("94EFE6E57F9DAF31044DE9B4090E1D59")  # Example encrypted data of "000000000000000000000000BEEFBABE" with an IV of "00's"
+
+# Create CMAC object using the AES key
+cmac = CMAC.new(key, ciphermod=AES)
+
+# Compute CMAC over the encrypted data
+cmac.update(encrypted_data)
+cmac_value = cmac.digest()  # 16-byte CMAC output
+
+# Print the CMAC in hexadecimal format
+print("AES-CMAC:", binascii.hexlify(cmac_value).decode().upper())
+
+# Explanation of CMAC Computation
+# The AES key is used to initialize the CMAC object.
+# The encrypted data is fed into the CMAC calculation.
+# The resulting CMAC tag is 16 bytes long, ensuring message authenticity.
+# If the data is modified, the CMAC will change, meaning verification will fail.
+# This is how MIFARE DESFire ensures data integrity after encryption. The reader and card both compute CMACs and compare them to detect any tampering.
