@@ -7,12 +7,12 @@
 
     Disclaimer:
     -----------
-    This Python script is provided for educational purposes only, demonstrating 
+    This Python script is provided for educational purposes only, demonstrating an example of 
     MIFARE DESFire EV2 Secure Messaging. It is intended solely for 
     learning and illustrative use and should not be used in any commercial, 
     production, or security-critical environment.
     
-    This script does not replicate the exact process of MIFARE DESFire EV2 Secure Messaging, 
+    This script does not replicate the exact process of MIFARE DESFire EV2 Secure Messaging (SELECT, AUTHENTICATE, READ FILE), 
     nor does it expose any vulnerabilities or sensitive information.
 
     This script is not affiliated with, endorsed by, or the responsibility of any 
