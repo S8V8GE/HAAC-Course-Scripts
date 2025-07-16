@@ -5,7 +5,7 @@
     Disclaimer:
     -----------
     This Python script is provided for educational purposes only, demonstrating
-    AES 128-bit sub key derivation. It is intended solely for
+    AES 128-bit sub key derivation (AES-CMAC). It is intended solely for
     learning and illustrative use and should not be used in any commercial,
     production, or security-critical environment.
 
