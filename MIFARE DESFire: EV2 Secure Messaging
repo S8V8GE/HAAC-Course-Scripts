@@ -514,9 +514,10 @@ file_id = int.from_bytes(fid, "big")       # File ID from variable 'fid'
 offset = 0x000000                                   # Read from start of file
 length = 0x10                                       # Read 16 bytes
 
-# TI and CmdCtr from simulated secure session state
+# TI and CmdCtr from **simulated** secure session state
 TI = bytes.fromhex("A1B2C3D4")            # Normally from card after mutual auth
 CmdCtr = 1                                # Command counter starts at 1 per session
+# note that these are dynamically returned by real cards and incremented per command.
 
 print(f"📁 File ID (from `fid`): {fid.hex().upper()} (interpreted as int: {file_id:02X})")
 print(f"📏 Offset in file:        {offset:06X}")
