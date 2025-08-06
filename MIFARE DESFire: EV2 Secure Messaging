@@ -3,34 +3,49 @@
 ####################################################################################################################
 """
     Author:     James Savage
-    Date:       5th February 2025
+    Date:       6th August 2025
 
     Disclaimer:
     -----------
-    This Python script is provided for educational purposes only, demonstrating an example of 
-    MIFARE DESFire EV2 Secure Messaging. It is intended solely for 
-    learning and illustrative use and should not be used in any commercial, 
-    production, or security-critical environment.
-    
-    This script does not replicate the exact process of MIFARE DESFire EV2 Secure Messaging (SELECT, AUTHENTICATE, READ FILE), 
-    nor does it expose any vulnerabilities or sensitive information.
+    This Python script is provided strictly for educational and illustrative purposes.
+    It simulates Secure Messaging in MIFARE DESFire EV2, including the SelectApplication,
+    AuthenticateEV2First, and ReadData commands.
 
-    This script is not affiliated with, endorsed by, or the responsibility of any 
-    employer or organization. Use it at your own risk, and always follow best 
-    practices when implementing cryptographic techniques.
+    It is not intended for use in commercial, production, or security-critical environments,
+    and should not be relied upon for any real-world security applications.
+
+    This script is based on publicly available documentation and community knowledge, including:
+
+        - NXP AN0945: MIFARE DESFire EV1/EV2 Features and Hints
+          https://www.nxp.com/docs/en/application-note/AN0945.pdf
+
+        - NXP AN10922: Key Diversification Guidelines
+          https://www.nxp.com/docs/en/application-note/AN10922.pdf
+
+        - ISO/IEC 7816-4: Integrated Circuit Cards – APDU command formatting
+          https://www.iso.org/standard/54550.html (note: official standard requires purchase)
+
+        - Open-source community research and tools:
+          - GitHub (e.g., libfreefare, pyDesfire, openkeychain)
+          - RFID & smartcard forums (e.g., RFID Hacking Forum, Stack Overflow, NXP Community)
+
+    This script does not expose any proprietary or NDA-protected information, nor does it
+    replicate the exact behavior of real-world cards or readers.
+
+    It is not affiliated with, endorsed by, or representative of any employer, company,
+    or the MIFARE® brand. Use at your own risk, and always consult certified specifications
+    and libraries when building secure systems.
 """
-
-
 
 ####################################################################################################################
 #                                Import from PyCryptoDome and others                                               #
 ####################################################################################################################
 from Crypto.Cipher import AES
 from Crypto.Hash import CMAC
-from hashlib import sha256
+from Crypto.Util.Padding import pad, unpad
 import os
 import binascii
-
+import struct
 
 
 ####################################################################################################################
@@ -42,24 +57,29 @@ def aes_encrypt(key, data):
     cipher = AES.new(key, AES.MODE_ECB)
     return cipher.encrypt(data)
 
+
 def aes_decrypt(key, data):
     """Decrypt data using AES ECB mode."""
     cipher = AES.new(key, AES.MODE_ECB)
     return cipher.decrypt(data)
 
+
 def rotate_left(data):
     """Rotate bytes left by one position."""
     return data[1:] + data[:1]
 
+
 def print_hex(label, data):
     """Print hex-formatted data."""
     print(f"{label}: {binascii.hexlify(data).decode().upper()}")
+
 
 def cmac(key, data):
     """Generate CMAC for data using AES key."""
     cmac_obj = CMAC.new(key, ciphermod=AES)
     cmac_obj.update(data)
     return cmac_obj.digest()
+
 
 def verify_cmac(expected_cmac, data, key):
     """Verify CMAC integrity by comparing with the expected CMAC."""
@@ -69,9 +89,11 @@ def verify_cmac(expected_cmac, data, key):
     else:
         print("CMAC Verification Failed")
 
+
 def left_shift(data):
     shifted = int.from_bytes(data, byteorder='big') << 1
     return (shifted & 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF).to_bytes(16, byteorder='big')
+
 
 def derive_subkeys(key):
     Rb = 0x87
@@ -98,14 +120,16 @@ def derive_subkeys(key):
 
     return K1, K2
 
+
 def reverse_bytes(data):
     reversed_data = data[::-1]
     print(f"Reversed {data.hex().upper()} to {reversed_data.hex().upper()}")
     return reversed_data
 
-def print_a_break():
-    return print("#############################################################################################################################################")
 
+def print_a_break():
+    return print(
+        "#############################################################################################################################################")
 
 
 ####################################################################################################################
@@ -113,17 +137,15 @@ def print_a_break():
 ####################################################################################################################
 
 # Note: ensure byte values are respected or the script won't work
-master_key = bytes.fromhex("D5A36CF065E7F4516748FB313187C6C8")  # Master Key (16 bytes)
-uid = bytes.fromhex("805FDF2A4D0404")  # UID (7 bytes)
-iv = bytes.fromhex("00000000000000000000000000000000")  # IV (16 bytes)
-private_id = bytes.fromhex("000000000000000000000000BEEFBABE")  # Private ID (16 bytes)
-aid = bytes.fromhex("BADB01")  # Application ID (3 bytes)
-key_number = bytes.fromhex("01")  # Key Number (1 byte)
-padding = bytes.fromhex("0000000000000000000000000000000000000000")  # Padding (20 bytes)
-sub_key = bytes.fromhex("01")  # Key Number (1 byte) - can be 01 (SubK_1) or 02 (SubK_2)
-fid = bytes.fromhex("01") # File ID Number (1 byte)
-
-
+master_key =    bytes.fromhex("D5A36CF065E7F4516748FB313187C6C8")           # Master Key (16 bytes)
+uid =           bytes.fromhex("805FDF2A4D0404")                             # UID (7 bytes)
+iv =            bytes.fromhex("00000000000000000000000000000000")           # IV (16 bytes)
+private_id =    bytes.fromhex("000000000000000000000000BEEFBABE")           # Private ID (16 bytes)
+aid =           bytes.fromhex("BADB01")                                     # Application ID (3 bytes)
+key_number =    bytes.fromhex("01")                                         # Key Number (1 byte)
+padding =       bytes.fromhex("0000000000000000000000000000000000000000")   # Padding (20 bytes)
+sub_key =       bytes.fromhex("01")                                         # Key Number (1 byte) - can be 01 (SubK_1) or 02 (SubK_2)
+fid =           bytes.fromhex("01")                                         # File ID Number (1 byte)
 
 ####################################################################################################################
 #                                  STEP 0 - Work out the Diversified Key                                           #
@@ -160,10 +182,12 @@ SubK_2_padded = b'\x00' * (32 - len(SubK_2)) + SubK_2  # Prepend 00 padding to m
 # XOR the padded subkey (using the correct sub key) and diversification data
 if sub_key == bytes.fromhex("01"):
     diversification_data_output = bytes(a ^ b for a, b in zip(diversification_data, SubK_1_padded))
-    print(f"Diversification Data Output (after XOR with padded SubK_1 and Diversification Data): {diversification_data_output.hex().upper()}")
+    print(
+        f"Diversification Data Output (after XOR with padded SubK_1 and Diversification Data): {diversification_data_output.hex().upper()}")
 elif sub_key == bytes.fromhex("02"):
     diversification_data_output = bytes(a ^ b for a, b in zip(diversification_data, SubK_2_padded))
-    print(f"Diversification Data Output (after XOR with padded SubK_2 and Diversification Data): {diversification_data_output.hex().upper()}")
+    print(
+        f"Diversification Data Output (after XOR with padded SubK_2 and Diversification Data): {diversification_data_output.hex().upper()}")
 else:
     print(f"sub_key can only be 01 or 02, actual value: {sub_key.hex().upper()}")
     print("*** Exiting Script ***")
@@ -187,260 +211,657 @@ print(f"Result: {encrypted.hex().upper()}")
 diversified_key = encrypted[-16:]
 print(f"Diversified Key (last 16 bytes): {diversified_key.hex().upper()}")
 
-
-
 ####################################################################################################################
-#                        STEP 1 - Card and Reader Authenticate Using RND1 and RND2                                 #
+#                          STEP 1 - Reader Selects Application (Plain, No Encryption)                              #
 ####################################################################################################################
 
-# Step 1 : Authentication using RND1 and RND2
-print("")
+print()
 print_a_break()
-print("=== Step 1: Card and Reader Authenticate Using RND1 and RND2 ===")
+print("=== Step 1: Reader Sends SelectApplication Command ===")
 print_a_break()
 
-# Generate random numbers (RND1 for reader, RND2 for card)
-rnd_1 = os.urandom(8)
-rnd_2 = os.urandom(8)
+print("Purpose of this step:")
+print("- The reader tells the card which application it wants to communicate with.")
+print("- The card may contain multiple applications (like folders); this selects the correct one.")
+print("- This command must be sent in **plaintext** because the reader and card are not yet in a secure session.")
+print("- No keys are used for this step — this is purely to set the application context.")
 
-# Reader generates a random number RND1, encrypts it, and sends it to the Card with a CMAC.
-print("*** Step 1a: Reader Generates RND1 ***")
-print(f"RND1 (Generated by Reader) {rnd_1.hex().upper()}")
-print(f"\n*** Step 1b: Reader Encrypts RND1 ({rnd_1.hex().upper()}) with the Diversified Key ({diversified_key.hex().upper()}) and generates a CMAC ***")
-enc_rnd_1 = aes_encrypt(diversified_key, rnd_1.ljust(16, b'\x00'))  # Pad RND2 to 16 bytes
-print(f"Encrypted RND1 with the Diversified Key: {enc_rnd_1.hex().upper()}")
-# CMAC after encrypting RND1
-cmac_value = cmac(diversified_key, enc_rnd_1)
-print(f"CMAC of Encrypted RND1: {cmac_value.hex().upper()}")
-print(f"Encrypted RND1 ({enc_rnd_1.hex().upper()}) and CMAC ({cmac_value.hex().upper()}) sent by the reader to the card")
+# ----------------------------
+# Build the APDU
+# ----------------------------
 
-# Card receives the encrypted RND1 and CMAC
-print(f"\n*** Step 1c: Card receives Encrypted RND1 ({enc_rnd_1.hex().upper()}) and CMAC ({cmac_value.hex().upper()}) sent by the reader ***")
-# Card verifies the CMAC
-print("Card verifies the CMAC using the Diversified Key on Encrypted RND1")
-verify_cmac(cmac_value, enc_rnd_1, diversified_key)
-# Card now decrypts encrypted RND1
-decrypted_rnd_1 = aes_decrypt(diversified_key, enc_rnd_1)[:8]  # Extract RND2
-print(f"Card decrypts RND1 using the Diversified Key, outputting: {decrypted_rnd_1.hex().upper()}")
+# APDU Format (ISO/IEC 7816-4):
+# CLA  | INS | P1  | P2  | Lc | AID      | Le
+# 0x00 | 0xA4| 0x04| 0x00| 0x03| BADB01 | 0x02
 
-# Card generates a random number RND2 and appends it to RND1, RND1||RND2 is then encrypted, and sent to the Reader with a CMAC of RND1||RND2.
-print("\n*** Step 1d: Card Generates RND2 ***")
-print(f"RND2 (Generated by Card) {rnd_2.hex().upper()}")
-rnd_1_rnd_2 = rnd_1 + rnd_2
-print(f"Card then appends RND1 ({rnd_1.hex().upper()}) + RND2 ({rnd_2.hex().upper()}), resulting in RND1||RND2: {rnd_1_rnd_2.hex().upper()} ")
-print(f"\n*** Step 1e: Card Encrypts RND1||RND2 ({rnd_1_rnd_2.hex().upper()}) with the Diversified Key ({diversified_key.hex().upper()}) and generates a CMAC ***")
-enc_rnd_2 = aes_encrypt(diversified_key, rnd_1_rnd_2.ljust(16, b'\x00'))  # Pad RND2 to 16 bytes if required
-print(f"Encrypted RND1||RND2 with the Diversified Key: {enc_rnd_2.hex().upper()}")
-# CMAC after encrypting RND1||RND2
-cmac_value = cmac(diversified_key, enc_rnd_2)
-print(f"CMAC of Encrypted RND1||RND2: {cmac_value.hex().upper()}")
-print(f"Encrypted RND1||RND2 ({enc_rnd_2.hex().upper()}) and CMAC ({cmac_value.hex().upper()}) sent by the card to the reader")
+cla = 0x00                          # Class byte – ISO/IEC 7816 standard
+ins = 0xA4                          # Instruction byte – 'SELECT FILE'
+p1 = 0x04                           # P1: Select by name (AID)
+p2 = 0x00                           # P2: First or only occurrence
+lc = len(aid)                       # Lc: Length of the AID (3 bytes)
+le = 0x02                           # Le: Expect 2-byte response (SW1 SW2)
 
-# Reader receives the encrypted RND1||RND2 and CMAC
-print(f"\n*** Step 1f: Reader receives Encrypted RND1||RND2 ({enc_rnd_2.hex().upper()}) and CMAC ({cmac_value.hex().upper()}) sent by the card ***")
-# Reader verifies the CMAC
-print("Reader verifies the CMAC using the Diversified Key on Encrypted RND1||RND2")
-verify_cmac(cmac_value, enc_rnd_2, diversified_key)
-# Reader now decrypts encrypted RND2
-decrypted_rnd_1and2 = aes_decrypt(diversified_key, enc_rnd_2)
-print(f"Reader decrypts RND1||RND2 using the Diversified Key, outputting: {decrypted_rnd_1and2.hex().upper()}")
-decrypted_rnd_2_RND1 = aes_decrypt(diversified_key, enc_rnd_2)[:8]  # Extract RND1
-decrypted_rnd_2_RND2 = aes_decrypt(diversified_key, enc_rnd_2)[8:]  # Extract RND2
-print(f"Reader splits the string to look for RND1 ({decrypted_rnd_2_RND1.hex().upper()}) and RND2 ({decrypted_rnd_2_RND2.hex().upper()})")
-print(f"\nRND1 ({decrypted_rnd_2_RND1.hex().upper()}) matches what was first generated by the reader")
-print("*** Trust is now established as the card successfully decrypted RND1 and appended RND2 ***")
+# Construct the full APDU command
+select_apdu = bytes([cla, ins, p1, p2, lc]) + aid + bytes([le])
 
+print(f"\n➡️  Reader constructs APDU to select the application (AID = {aid.hex().upper()})")
+print(f"Final APDU: {select_apdu.hex().upper()}")
 
+# ----------------------------
+# APDU Breakdown
+# ----------------------------
+print("\n-- Breakdown of SELECT APPLICATION APDU --")
+print(f"{cla:02X}: CLA (Class byte) – ISO/IEC 7816-4 standard command class")
+print(f"{ins:02X}: INS (Instruction byte) – 'SELECT FILE' command (0xA4)")
+print(f"{p1:02X}: P1 – Select by AID (Application Identifier)")
+print(f"{p2:02X}: P2 – Select first or only occurrence")
+print(f"{lc:02X}: Lc – Length of AID (3 bytes)")
+print(f"{aid.hex().upper()}: AID – Application Identifier (target app)")
+print(f"{le:02X}: Le – Expected length of response (2 bytes, SW1/SW2)")
+
+# ----------------------------
+# Simulate Card Response
+# ----------------------------
+
+print("\n📟 Card receives the SelectApplication command...")
+
+# Simulate a successful response (9000 = Success)
+if aid == bytes.fromhex("BADB01"):
+    sw1 = 0x90
+    sw2 = 0x00
+    print(f"\n✅ The AID {aid.hex().upper()} **exists** on the card.")
+    print("✅ Card has now switched to that application context.")
+else:
+    sw1 = 0x6A
+    sw2 = 0x82
+    print(f"\n❌ The AID {aid.hex().upper()} does **not exist** on the card.")
+    print("❌ The card cannot switch to a non-existent application.")
+
+response_apdu = bytes([sw1, sw2])
+print(f"\n⬅️  Card responds with: {response_apdu.hex().upper()}")
+
+# ----------------------------
+# Response Breakdown
+# ----------------------------
+print("\n-- Breakdown of Card's Response (Status Words) --")
+print(f"{sw1:02X}: SW1 – Status byte 1")
+print(f"{sw2:02X}: SW2 – Status byte 2")
+
+if response_apdu == bytes.fromhex("9000"):
+    print("✔️  9000 means: Command completed successfully – the AID exists.")
+    print("✔️  The card has switched to the selected application's key set.")
+else:
+    print("❌  6A82 means: File/Application not found – the AID does not exist on this card.")
+
+# ----------------------------
+# Security Notes
+# ----------------------------
+print("\n-- Security Note --")
+print("🔓 No encryption or CMAC is used for SelectApplication.")
+print("🔑 No keys are used at this stage — the reader and card are not yet in a secure session.")
+print("🔐 Once the application is selected, the reader must **authenticate** to prove it has the right to access protected data.")
 
 ####################################################################################################################
-#                         STEP 2 - Trust Established and Session Key Derivation                                    #
+#                          STEP 2 - Reader Authenticates with 'AuthenticateEV2First'                               #
 ####################################################################################################################
 
-# Step 2: Derive Session Key from UID, RND1, and RND2
-print("")
+print()
 print_a_break()
-print("=== Step 2: Derive Session Key from UID, RND1 and RND2 (ensuring every session key is unique) ===")
+print("=== Step 2: Reader Initiates Secure Session with AuthenticateEV2First ===")
 print_a_break()
-# Assuming `uid` is a 7-byte UID, `rnd_1` and `rnd_2` are both 8 bytes
-# Deriving the data to hash by using the UID and random numbers
-data_to_hash = uid + rnd_1 + rnd_2  # Concatenate UID and random numbers
-# Use SHA-256 to process the data into a hash
-session_key_256 = sha256(data_to_hash).digest()
-# Take the first 16 bytes from the SHA-256 Hash
-session_key = session_key_256[:16]
-print(f"Unique Session Key: {session_key.hex().upper()}")
 
-
+print("Purpose of this step:")
+print("- Begin the process of mutual authentication using the Diversified Key.")
+print("- The card will prove it knows the secret key by encrypting a random number (RndB).")
+print("- The reader will then respond with its own random number (RndA) + rotated RndB, also encrypted.")
+print("- Both parties will derive a shared **Session Key**, used to protect all future messages.")
 
 ####################################################################################################################
-#                            STEP 3 - Reader Sends Encrypted Command with CMAC                                     #
+#                          STEP 2a - Reader Sends AuthenticateEV2First Command                                     #
 ####################################################################################################################
 
-# Step 3: Select Application
-print("")
-print_a_break()
-print("=== Step 3: Select Application ===")
-print_a_break()
-print(f"Application ID that will be selected = {aid.hex().upper()}")
-# Generate the APDU for selecting the AID
-"""
-APDU (9 byte) example:
-    0x00: CLA (Class)
-    0xA4: INS (Select)
-    0x04: P1 (Select AID)
-    0x00: P2 (Select the application)
-    aid_length: Length of the AID
-    aid: The Application ID (AID) to select
-    0x02: Le (length of Expected response) is 2 bytes
-"""
-aid_length = len(aid)  # Length of AID
-apdu_command = bytearray([0x00, 0xA4, 0x04, 0x00, aid_length]) + aid + bytes([0x02])  # Le is 0x02 for 2 byte response
-print(f"Unencrypted APDU 'Select AID' Command: {apdu_command.hex().upper()}")
-# Encrypt the Select Application command
-enc_select_application = aes_encrypt(session_key, apdu_command.ljust(16, b'\x00'))  # Pad to 16 bytes
-print(f"Encrypted Select Application APDU Command: {enc_select_application.hex().upper()}")
-# CMAC after encrypting the Select Application Command
-cmac_value = cmac(session_key, enc_select_application)
-print(f"CMAC of Encrypted Select Application APDU Command using the unique Session Key ({session_key.hex().upper()}): {cmac_value.hex().upper()}")
-print(f"Encrypted Select Application APDU Command ({enc_select_application.hex().upper()}) and CMAC ({cmac_value.hex().upper()}) sent by the reader to the card")
+key_id = int.from_bytes(key_number, "big")
 
+auth_apdu = bytes.fromhex(f"9071000001{key_id:02X}")
 
+print(f"\n➡️  Reader constructs AuthenticateEV2First APDU:")
+print(f"APDU: {auth_apdu.hex().upper()}")
+
+print("\n-- Breakdown of AuthenticateEV2First APDU --")
+print("90: CLA – Proprietary ISO/IEC 7816 command class")
+print("71: INS – AuthenticateEV2First instruction")
+print("00: P1  – Must be 0x00")
+print("00: P2  – Must be 0x00")
+print("01: Lc  – Length of following data (1 byte)")
+print(f"{key_id:02X}: Key ID – Specifies which key to authenticate against")
+
+print("\n🔓 This message is sent in plaintext – encryption begins in the next step.")
 
 ####################################################################################################################
-#                       STEP 4 - Card Verifies CMAC, Decrypts Command, and sends a Response                        #
+#                          STEP 2b - Card Responds with Encrypted RndB + CMAC                                      #
 ####################################################################################################################
 
-print("")
+print()
 print_a_break()
-print("=== Step 4: Card Verifies CMAC and Responds to the Select Application APDU Command ===")
+print("=== Step 2b: Card Responds with Encrypted RndB + CMAC ===")
 print_a_break()
-# Card receives the encrypted Select Application APDU Command and CMAC
-print(f"*** Step 4a: Card receives the encrypted Select Application APDU Command ({enc_select_application.hex().upper()}) and CMAC ({cmac_value.hex().upper()}) sent by the reader ***")
-# Card verifies the CMAC
-print("Card verifies the CMAC using the Unique Session Key on the encrypted Select Application APDU Command")
-verify_cmac(cmac_value, enc_select_application, session_key)
-# Card now decrypts the encrypted Select Application APDU Command
-decrypted_select_application= aes_decrypt(session_key, enc_select_application)[:9]
-print(f"Card decrypts the encrypted Select Application APDU Command using the Session Key, outputting: {decrypted_select_application.hex().upper()}")
 
-# Card generates a 2 byte response to the Select Application APDU Command, encrypts it, and generates a CMAC
-print(f"\n*** Step 4b: Card generates a 2 byte response to the reader to say OK or AID not found ***")
-# Generate the APDU for selecting the AID
-"""
-APDU (2 byte) example:
-    0x9000: success (OK)
-    0x6A82: AID not found (this is just an example)
-"""
-apdu_command = bytearray([0x90, 0x00])
-print(f"Unencrypted APDU Response: {apdu_command.hex().upper()} (Success/OK)")
-# Encrypt the Response
-enc_response_to_select_application = aes_encrypt(session_key, apdu_command.ljust(16, b'\x00'))  # Pad to 16 bytes
-print(f"Encrypted APDU Response: {enc_response_to_select_application.hex().upper()}")
-# CMAC after encrypting the Response
-cmac_value = cmac(session_key, enc_response_to_select_application)
-print(f"CMAC of APDU Response using the unique Session Key ({session_key.hex().upper()}): {cmac_value.hex().upper()}")
-print(f"Encrypted APDU Response ({enc_response_to_select_application.hex().upper()}) and CMAC ({cmac_value.hex().upper()}) sent by the card to the reader")
+rndB = os.urandom(16)
+print(f"🧬 Card generates random number RndB: {rndB.hex().upper()}")
 
+enc_rndB = aes_encrypt(diversified_key, rndB)
+print(f"🔐 Card encrypts RndB with Diversified Key ({diversified_key.hex().upper()}):")
+print(f"Encrypted RndB: {enc_rndB.hex().upper()}")
 
+cmac_obj = CMAC.new(diversified_key, ciphermod=AES)
+cmac_obj.update(enc_rndB)
+cmac_card = cmac_obj.digest()[:8]
+print(f"🧾 Card generates CMAC (8 bytes, AES-CMAC truncated): {cmac_card.hex().upper()}")
+
+card_response = enc_rndB + cmac_card
+print(f"\n⬅️  Card sends: Encrypted RndB + CMAC")
+print(f"Response: {card_response.hex().upper()}")
 
 ####################################################################################################################
-#               STEP 5 - Reader Verifies Card Response (CMAC Check) and Derives Diversified Key                    #
+#                          STEP 2c - Reader Responds with Encrypted RndA + Rotated RndB + CMAC                     #
 ####################################################################################################################
 
-# Reader receives the encrypted APDU Response and CMAC
-print("")
+print()
 print_a_break()
-print("=== Step 5: Reader Verifies CMAC and Checks the Response from the Card to the Select Application APDU Command ===")
+print("=== Step 2c: Reader Responds with Encrypted RndA + Rotated RndB + CMAC ===")
 print_a_break()
-print(f"*** Step 5a: Encrypted APDU Response ({enc_response_to_select_application.hex().upper()}) and CMAC ({cmac_value.hex().upper()}) sent by the card ***")
-# Reader verifies the CMAC
-print("Reader verifies the CMAC of the APDU Response using the Unique Session Key")
-verify_cmac(cmac_value, enc_response_to_select_application, session_key)
-# Reader now decrypts encrypted APDU Response
-decrypted_apdu_response = aes_decrypt(session_key, enc_response_to_select_application)
-print(f"Reader decrypts APDU Response using the unique Session Key ({session_key.hex().upper()}), outputting: {decrypted_apdu_response.hex().upper()[:4]} (Success/OK)")
-print("*** The reader now knows the AID exists and will send a 'read' APDU command ***")
 
+rndB_decrypted = aes_decrypt(diversified_key, enc_rndB)
+print(f"🔓 Reader decrypts RndB using Diversified Key:")
+print(f"Decrypted RndB: {rndB_decrypted.hex().upper()}")
 
+rndA = os.urandom(16)
+print(f"🧬 Reader generates random number RndA: {rndA.hex().upper()}")
+
+rotated_rndB = rotate_left(rndB_decrypted)
+print(f"🔄 Reader rotates RndB left by 1 byte: {rotated_rndB.hex().upper()}")
+
+message = rndA + rotated_rndB
+print(f"\n🧱 Message to Encrypt: RndA || rotated RndB")
+print(f"Plaintext: {message.hex().upper()}")
+
+enc_message = aes_encrypt(diversified_key, message)
+print(f"🔐 Reader encrypts message with Diversified Key:")
+print(f"Encrypted message: {enc_message.hex().upper()}")
+
+cmac_obj = CMAC.new(diversified_key, ciphermod=AES)
+cmac_obj.update(enc_message)
+cmac_reader = cmac_obj.digest()[:8]
+print(f"🧾 Reader generates CMAC: {cmac_reader.hex().upper()}")
+
+reader_response = enc_message + cmac_reader
+print(f"\n➡️  Reader sends: Encrypted (RndA || rotated RndB) + CMAC")
+print(f"Data sent to card: {reader_response.hex().upper()}")
 
 ####################################################################################################################
-#                     STEP 6 - Reader Sends Command to Read File Using Diversified Key                             #
+#                          STEP 2d - Card Verifies Reader's Response                                               #
 ####################################################################################################################
 
-# Step 6: Reader Sends Command to Read File Using Diversified Key
-print("")
+print()
 print_a_break()
-print("=== Step 6: Read File ===")
+print("=== Step 2d: Card Verifies Reader's Response ===")
 print_a_break()
-print(f"File ID {fid.hex().upper()} from Application ID {aid.hex().upper()} will be read, using the diversified File Read Key at index {key_number.hex().upper()} for authentication")
 
-# Generate the APDU for reading the File using File ID (FID)
-"""
-APDU (9 byte) example for SELECT FILE:
-    0x00: CLA (Class)
-    0xA4: INS (Select)
-    0x02: P1 (Select FID)
-    0x00: P2 (Select the file)
-    fid_length: Length of FID
-    fid: The File ID to select
-    0x10: Le (length of Expected response) for a 16-byte Private ID (example)
-"""
-apdu_command = bytearray([0x00, 0xA4, 0x02, 0x00, len(fid)]) + fid + bytes([0x10])  # Le is 0x10 for 16 byte response
-print(f"Unencrypted APDU 'Read File' Command: {apdu_command.hex().upper()}")
-# Encrypt the Read File command
-enc_read_file = aes_encrypt(diversified_key, apdu_command.ljust(16, b'\x00'))  # Pad to 16 bytes
-print(f"Encrypted Read File APDU Command using the diversified key ({diversified_key.hex().upper()}): {enc_read_file.hex().upper()}")
-# CMAC after encrypting the Read File Command
-cmac_value = cmac(diversified_key, enc_read_file)
-print(f"CMAC of Encrypted Read File APDU Command using the Diversified Key ({diversified_key.hex().upper()}): {cmac_value.hex().upper()}")
-print("Note: The diversified key is used here to ensure the session key is not reused, and each operation is secured with a unique key per card for file access. This reduces the risk of key compromise and enhances security.")
-print(f"Encrypted Read File APDU Command ({enc_read_file.hex().upper()}) and CMAC ({cmac_value.hex().upper()}) sent by the reader to the card")
+card_enc_msg = reader_response[:-8]
+card_received_cmac = reader_response[-8:]
 
+cmac_obj = CMAC.new(diversified_key, ciphermod=AES)
+cmac_obj.update(card_enc_msg)
+expected_cmac = cmac_obj.digest()[:8]
 
+print(f"🧾 Card recalculates CMAC: {expected_cmac.hex().upper()}")
+print(f"CMAC received from reader: {card_received_cmac.hex().upper()}")
+
+if expected_cmac == card_received_cmac:
+    print("✅ CMAC is valid – message was not altered")
+else:
+    print("❌ CMAC is invalid – possible tampering")
+
+decrypted = aes_decrypt(diversified_key, card_enc_msg)
+card_rndA = decrypted[:16]
+card_rotated_rndB = decrypted[16:]
+expected_rotated_rndB = rotate_left(rndB)
+
+print(f"\n🔓 Card decrypts payload:")
+print(f"RndA from reader: {card_rndA.hex().upper()}")
+print(f"Rotated RndB from reader: {card_rotated_rndB.hex().upper()}")
+print(f"Expected rotated RndB: {expected_rotated_rndB.hex().upper()}")
+
+if card_rotated_rndB == expected_rotated_rndB:
+    print("✅ Rotated RndB is valid – reader proved knowledge of secret key")
+    print("🤝 Mutual authentication successful – session key can now be derived")
+else:
+    print("❌ Rotated RndB mismatch – reader authentication failed")
 
 ####################################################################################################################
-#                          STEP 7 - Card Encrypts Private ID and Generates CMAC                                    #
+#                          STEP 2e - Derive Shared Session Key                                                     #
 ####################################################################################################################
 
-print("")
+print()
 print_a_break()
-print("=== Step 7: Card Verifies CMAC and Responds to the Read File APDU Command ===")
+print("=== Step 2e: Both Reader and Card Derive the Shared Session Key ===")
 print_a_break()
-# Card receives the encrypted Read File APDU Command and CMAC
-print(f"*** Step 7a: Card receives the encrypted Read File APDU Command ({enc_read_file.hex().upper()}) and CMAC ({cmac_value.hex().upper()}) sent by the reader ***")
-# Card verifies the CMAC
-print(f"Card verifies the CMAC using the Diversified Key ({diversified_key.hex().upper()}) on the encrypted Read File APDU Command")
-verify_cmac(cmac_value, enc_read_file, diversified_key)
-# Card now decrypts the encrypted Read File APDU Command
-decrypted_read_file= aes_decrypt(diversified_key, enc_read_file)[:7]
-print(f"Card decrypts the encrypted Read File APDU Command using the Diversified Key ({diversified_key.hex().upper()}), outputting: {decrypted_read_file.hex().upper()}")
 
-# Card takes the Private ID, encrypts it, and generates a CMAC
-print(f"\n*** Step 7b: Card takes the Private ID and encrypts it with the unique Session Key ({session_key.hex().upper()}) ***")
-print(f"Unencrypted Private ID: {private_id.hex().upper()}")
-# Encrypt the Private ID
-enc_private_id = aes_encrypt(session_key, private_id.ljust(16, b'\x00'))  # Pad to 16 bytes
-print(f"Encrypted Private ID: {enc_private_id.hex().upper()}")
-# CMAC after encrypting the Response
-cmac_value = cmac(session_key, enc_private_id)
-print(f"CMAC of encrypted Private ID using the unique Session Key ({session_key.hex().upper()}): {cmac_value.hex().upper()}")
-print(f"Encrypted Private ID ({enc_private_id.hex().upper()}) and CMAC ({cmac_value.hex().upper()}) sent by the card to the reader")
+print("Purpose of this step:")
+print("- Both the card and the reader independently derive the same Session Key (SK).")
+print("- This key will be used to protect all further communication using encryption (ENC) and authentication (CMAC).")
+print("- The key is derived from known values RndA and RndB using AES-CMAC, as defined in NXP's AN0945 spec.")
 
+# ----------------------------------------------------------------
+# 🔢 Step 1: Extract required parts from RndA and RndB
+# ----------------------------------------------------------------
+print("\nStep 1: Extract input for Key Derivation (KeyData)")
+
+print("According to NXP AN0945, the session key is derived from:")
+print("RndA[0:4] || RndB[0:4] || RndA[12:16] || RndB[12:16]")
+
+key_data = rndA[0:4] + rndB[0:4] + rndA[12:16] + rndB[12:16]
+
+print(f"\nKeyData Components:")
+print(f"RndA[0:4]:       {rndA[0:4].hex().upper()}")
+print(f"RndB[0:4]:       {rndB[0:4].hex().upper()}")
+print(f"RndA[12:16]:     {rndA[12:16].hex().upper()}")
+print(f"RndB[12:16]:     {rndB[12:16].hex().upper()}")
+print(f"\n🧱 Combined KeyData (16 bytes): {key_data.hex().upper()}")
+
+# ----------------------------------------------------------------
+# 🔐 Step 2: Calculate AES-CMAC over KeyData using Diversified Key
+# ----------------------------------------------------------------
+print("\nStep 2: Derive Session Key from KeyData using AES-CMAC")
+
+print("Explanation:")
+print("- The 16-byte KeyData is used as the message input to AES-CMAC.")
+print("- The diversified key is used as the CMAC key.")
+print("- The full 16-byte CMAC output is used directly as the Session Key (SK).")
+
+cmac_obj = CMAC.new(diversified_key, ciphermod=AES)
+cmac_obj.update(key_data)
+session_key = cmac_obj.digest()
+
+print(f"\n🔐 Diversified Key used for CMAC: {diversified_key.hex().upper()}")
+print(f"🧮 CMAC result (Session Key):     {session_key.hex().upper()}")
+
+print("\n🧠 Final Result:")
+print("✅ Session Key successfully derived.")
+print("🔐 This key will now be used to encrypt and authenticate all subsequent messages.")
 
 ####################################################################################################################
-#                         STEP 8 - Reader Verifies CMAC and Decrypts Private ID                                    #
+#                          STEP 3a - Reader Sends Secure Wrapped 'ReadData' Command                                #
 ####################################################################################################################
 
-# Reader receives the encrypted private ID and CMAC
-print("")
+print()
 print_a_break()
-print("=== Step 8: Reader Verifies CMAC and Decrypts the Encrypted Private ID to send to the Controller ===")
+print("=== Step 3a: Reader Sends Secure Wrapped 'ReadData' Command ===")
 print_a_break()
-print(f"*** Step 8a: Encrypted Private ID ({enc_private_id.hex().upper()}) and CMAC ({cmac_value.hex().upper()}) sent by the card ***")
-# Reader verifies the CMAC
-print("Reader verifies the CMAC of the Private ID using the Unique Session Key")
-verify_cmac(cmac_value, enc_private_id, session_key)
-# Reader now decrypts encrypted Private ID
-decrypted_private_id_response = aes_decrypt(session_key, enc_private_id)
-print(f"Reader decrypts Private ID using the unique Session Key ({session_key.hex().upper()}), outputting: {decrypted_private_id_response.hex().upper()}")
-print("*** The reader now passes on the Private ID for the Controller to make a decision ***")
+
+print("🧠 Purpose of this step:")
+print("- Read 16 bytes from a specific file (defined in `fid`) on the DESFire EV2 card.")
+print("- Use Secure Messaging (SM) to encrypt the command and add a CMAC to protect its integrity.")
+print("- All encryption and MACs are done using the **Session Key**, not the diversified key.")
+
+# ----------------------------------------------------------------------------------
+# Step 0: Setup parameters from variables
+# ----------------------------------------------------------------------------------
+
+# Use variables already defined:
+file_id = int.from_bytes(fid, "big")       # File ID from variable 'fid'
+offset = 0x000000                                   # Read from start of file
+length = 0x10                                       # Read 16 bytes
+
+# TI and CmdCtr from simulated secure session state
+TI = bytes.fromhex("A1B2C3D4")            # Normally from card after mutual auth
+CmdCtr = 1                                # Command counter starts at 1 per session
+
+print(f"📁 File ID (from `fid`): {fid.hex().upper()} (interpreted as int: {file_id:02X})")
+print(f"📏 Offset in file:        {offset:06X}")
+print(f"📦 Number of bytes:       {length}")
+print(f"🧮 Command Counter:        {CmdCtr:04X} (increases with each command in session)")
+print(f"🔗 Transaction Identifier: {TI.hex().upper()} (used in ENC + CMAC derivation)")
+
+# ----------------------------------------------------------------------------------
+# Step 1: Construct the plaintext parameters of the ReadData command
+# ----------------------------------------------------------------------------------
+
+print_a_break()
+print("📦 Step 1: Build Plaintext Command Parameters")
+
+# Format per NXP: [FileID (1B)] + [Offset (3B)] + [Length (3B)]
+cmd_data = (
+    struct.pack(">B", file_id) +
+    struct.pack(">I", offset)[1:] +
+    struct.pack(">I", length)[1:]
+)
+
+print(f"🧱 Plain Command Data: {cmd_data.hex().upper()} (FileID | Offset[3] | Length[3])")
+
+# ----------------------------------------------------------------------------------
+# Step 2: Encrypt the parameters (ENC) using the Session Key
+# ----------------------------------------------------------------------------------
+
+print_a_break()
+print("🔐 Step 2: Encrypt Command Parameters using Session Key (ENC)")
+
+# Per NXP: IV = CMAC(SessionKey, TI || CmdCtr || 0x00)
+iv_input = TI + CmdCtr.to_bytes(2, "big") + b"\x00"
+cmac_obj = CMAC.new(session_key, ciphermod=AES)
+cmac_obj.update(iv_input)
+enc_iv = cmac_obj.digest()
+
+print(f"🧪 ENC IV input: TI || CmdCtr || 0x00 = {iv_input.hex().upper()}")
+print(f"🔑 Derived IV for ENC: {enc_iv.hex().upper()}")
+
+# Pad and encrypt
+padded_cmd = pad(cmd_data, AES.block_size)
+cipher = AES.new(session_key, AES.MODE_CBC, enc_iv)
+enc_cmd = cipher.encrypt(padded_cmd)
+
+print(f"📥 Padded Command Data (PKCS#7): {padded_cmd.hex().upper()}")
+print(f"🔐 Encrypted Command Payload (ENC): {enc_cmd.hex().upper()}")
+print(f"🔑 Key used: Session Key ({session_key.hex().upper()})")
+
+# ----------------------------------------------------------------------------------
+# Step 3: Generate CMAC over the command (for integrity)
+# ----------------------------------------------------------------------------------
+
+print_a_break()
+print("🧾 Step 3: Generate CMAC to ensure message integrity")
+
+# APDU header for ReadData: CLA | INS | P1 | P2
+apdu_header = bytes.fromhex("90BD0000")
+Lc = len(enc_cmd)  # Length of encrypted data
+
+# Build CMAC input per NXP spec
+cmac_input = (
+    TI +
+    CmdCtr.to_bytes(2, "big") +
+    apdu_header[1:] +           # INS, P1, P2
+    bytes([Lc]) +               # Length of ENC
+    enc_cmd                     # Encrypted data
+)
+
+print(f"🧾 CMAC input: TI || CmdCtr || INS || P1 || P2 || Lc || ENC")
+print(f"Data to MAC: {cmac_input.hex().upper()}")
+
+cmac_obj = CMAC.new(session_key, ciphermod=AES)
+cmac_obj.update(cmac_input)
+full_cmac = cmac_obj.digest()
+trunc_cmac = full_cmac[:8]
+
+print(f"🔐 Full CMAC: {full_cmac.hex().upper()}")
+print(f"✂️  Truncated CMAC (8 bytes): {trunc_cmac.hex().upper()}")
+print(f"🔑 Key used: Session Key ({session_key.hex().upper()})")
+
+# ----------------------------------------------------------------------------------
+# Step 4: Build final wrapped APDU to send to the card
+# ----------------------------------------------------------------------------------
+
+print_a_break()
+print("📦 Step 4: Construct Final Secure APDU to Send")
+
+final_apdu = (
+    apdu_header +                        # CLA | INS | P1 | P2
+    bytes([Lc + len(trunc_cmac)]) +      # Lc = ENC + CMAC
+    enc_cmd +                            # Encrypted data
+    trunc_cmac +                         # CMAC
+    b"\x00"                              # Le
+)
+
+print(f"\n➡️  Final Secure Wrapped ReadData APDU: {final_apdu.hex().upper()}")
+
+print("\n📖 Final APDU Breakdown:")
+print(f"CLA: {apdu_header[0]:02X} – Proprietary instruction class")
+print(f"INS: {apdu_header[1]:02X} – Instruction code (ReadData)")
+print("P1:  00 – Default parameter")
+print("P2:  00 – Default parameter")
+print(f"Lc:  {Lc + len(trunc_cmac)} – Length of ENC + CMAC")
+print("ENC: Encrypted command payload")
+print("CMAC: 8-byte truncated CMAC")
+print("Le:  00 – Expect response from card")
+
+print_a_break()
+print("✅ Step 3a Complete: Command is protected with Secure Messaging")
+print(f"🔐 Encryption Key Used: Session Key ({session_key.hex().upper()})")
+print("🔐 IV derived from TI and CmdCtr to ensure uniqueness")
+print("🧾 CMAC ensures message integrity and authenticity")
+print("📤 Command is now ready to be sent to the card securely")
+
+####################################################################################################################
+#                          STEP 3b – Card Receives, Validates, and Decrypts ReadData Command                       #
+####################################################################################################################
+
+print()
+print_a_break()
+print("=== Step 3b: Card Receives Secure Wrapped 'ReadData' Command ===")
+print_a_break()
+
+print("🧠 Purpose of this step:")
+print("- Simulate how the card handles a Secure Messaging ReadData command.")
+print("- It must:")
+print("   1️⃣ Verify the CMAC is correct (ensures integrity)")
+print("   2️⃣ Decrypt the ENC payload (to extract FileID, Offset, Length)")
+print("   3️⃣ Perform the file access using real data (from `private_id`)")
+print("   4️⃣ Send an encrypted + CMAC-protected response using the Session Key")
+
+# ----------------------------------------------------------------------------------
+# Step 1: Parse the APDU sent by the reader
+# ----------------------------------------------------------------------------------
+
+print("\n📦 Step 1: Parse Incoming APDU")
+
+# We'll assume `final_apdu` is still in memory from Step 3a...
+cla = final_apdu[0]
+ins = final_apdu[1]
+p1 = final_apdu[2]
+p2 = final_apdu[3]
+lc = final_apdu[4]
+enc_len = lc - 8
+
+enc_data = final_apdu[5:5+enc_len]
+recv_cmac = final_apdu[5+enc_len:5+enc_len+8]
+le = final_apdu[-1:]
+
+print(f"📨 APDU Received:")
+print(f"  CLA: {cla:02X}")
+print(f"  INS: {ins:02X}")
+print(f"  P1:  {p1:02X}")
+print(f"  P2:  {p2:02X}")
+print(f"  Lc:  {lc} bytes (ENC + CMAC)")
+print(f"  ENC Payload: {enc_data.hex().upper()}")
+print(f"  CMAC Received: {recv_cmac.hex().upper()}")
+print(f"  Le: {le.hex().upper()}")
+
+# ----------------------------------------------------------------------------------
+# Step 2: Validate the CMAC
+# ----------------------------------------------------------------------------------
+
+print_a_break()
+print("🧾 Step 2: Card Validates CMAC of the Incoming Command")
+
+cmac_input_card = (
+    TI +
+    CmdCtr.to_bytes(2, "big") +
+    bytes([ins, p1, p2]) +
+    bytes([enc_len]) +
+    enc_data
+)
+
+cmac_obj = CMAC.new(session_key, ciphermod=AES)
+cmac_obj.update(cmac_input_card)
+expected_cmac = cmac_obj.digest()[:8]
+
+print(f"🔐 Reconstructed CMAC input: {cmac_input_card.hex().upper()}")
+print(f"🧾 CMAC calculated by card: {expected_cmac.hex().upper()}")
+print(f"📬 CMAC received from reader: {recv_cmac.hex().upper()}")
+
+if expected_cmac != recv_cmac:
+    print("❌ CMAC verification failed! Reader command may have been tampered with.")
+    sys.exit(1)
+else:
+    print("✅ CMAC verification succeeded – integrity confirmed")
+
+# ----------------------------------------------------------------------------------
+# Step 3: Decrypt the ENC payload to get command parameters
+# ----------------------------------------------------------------------------------
+
+print_a_break()
+print("🔓 Step 3: Decrypt ENC Payload using Session Key")
+
+# Re-derive IV: TI || CmdCtr || 0x00
+iv_input = TI + CmdCtr.to_bytes(2, "big") + b"\x00"
+cmac_obj = CMAC.new(session_key, ciphermod=AES)
+cmac_obj.update(iv_input)
+dec_iv = cmac_obj.digest()
+
+print(f"🔑 Derived IV for decryption: {dec_iv.hex().upper()}")
+
+cipher = AES.new(session_key, AES.MODE_CBC, dec_iv)
+decrypted_data = unpad(cipher.decrypt(enc_data), AES.block_size)
+
+file_id_dec = decrypted_data[0]
+offset_dec = int.from_bytes(decrypted_data[1:4], "big")
+length_dec = int.from_bytes(decrypted_data[4:7], "big")
+
+print(f"🔓 Decrypted Command Data: {decrypted_data.hex().upper()}")
+print(f"📄 File ID:  {file_id_dec:02X}")
+print(f"📍 Offset:   {offset_dec}")
+print(f"📏 Length:   {length_dec} bytes")
+
+# ----------------------------------------------------------------------------------
+# Step 4: Prepare Encrypted Response using `private_id`
+# ----------------------------------------------------------------------------------
+
+print_a_break()
+print("📤 Step 4: Card Prepares Secure Response to Reader")
+
+# Use the variable defined `private_id`
+file_contents = private_id[:length_dec]
+print(f"📁 Simulated File Content (from variable `private_id`): {file_contents.hex().upper()} ({len(file_contents)} bytes)")
+
+# Step 4a – Encrypt response data using Session Key + derived IV
+iv_input_resp = TI + CmdCtr.to_bytes(2, "big") + b"\x01"
+cmac_obj = CMAC.new(session_key, ciphermod=AES)
+cmac_obj.update(iv_input_resp)
+resp_iv = cmac_obj.digest()
+
+cipher = AES.new(session_key, AES.MODE_CBC, resp_iv)
+padded_response = pad(file_contents, AES.block_size)
+enc_response = cipher.encrypt(padded_response)
+
+print(f"🧪 IV input for ENC: {iv_input_resp.hex().upper()}")
+print(f"🔑 Derived Response ENC IV: {resp_iv.hex().upper()}")
+print(f"📥 Padded Response Data: {padded_response.hex().upper()}")
+print(f"🔐 Encrypted Response: {enc_response.hex().upper()}")
+print(f"🔑 Encryption Key Used: Session Key ({session_key.hex().upper()})")
+
+# Step 4b – Generate Response CMAC
+status_code = bytes.fromhex("9100")
+cmac_input_resp = TI + CmdCtr.to_bytes(2, "big") + enc_response + status_code
+
+cmac_obj = CMAC.new(session_key, ciphermod=AES)
+cmac_obj.update(cmac_input_resp)
+resp_cmac = cmac_obj.digest()[:8]
+
+print(f"\n🧾 Response CMAC input: TI || CmdCtr || ENC || StatusCode")
+print(f"Data to MAC: {cmac_input_resp.hex().upper()}")
+print(f"🔐 Truncated Response CMAC (8 bytes): {resp_cmac.hex().upper()}")
+
+# Final response from card = ENC || CMAC || Status Code
+full_response = enc_response + resp_cmac + status_code
+
+print_a_break()
+print("✅ Step 3b Complete: Card Response Ready to Send")
+print(f"📤 Final Response to Reader: {full_response.hex().upper()}")
+print("💡 Reader will now decrypt this using the Session Key and validate the CMAC.")
+
+####################################################################################################################
+#                       STEP 3c – Reader Receives Response, Verifies CMAC, and Decrypts Data                      #
+####################################################################################################################
+
+print()
+print_a_break()
+print("=== Step 3c: Reader Receives Encrypted Response from Card ===")
+print_a_break()
+
+print("🧠 Purpose of this step:")
+print("- The reader receives the card’s encrypted response.")
+print("- It must:")
+print("   1️⃣ Verify the CMAC to ensure response wasn’t tampered with.")
+print("   2️⃣ Decrypt the ENC payload using the Session Key and correct IV.")
+print("   3️⃣ Remove any padding and extract the actual file content.")
+print("   4️⃣ Confirm the result matches what we expect (e.g. private_id).")
+
+# ----------------------------------------------------------------------------------
+# Step 1: Parse the response from the card
+# ----------------------------------------------------------------------------------
+
+response_data = full_response  # This should be the final card response from Step 3b?
+enc_response = response_data[:-10]  # Exclude CMAC and Status
+cmac_received = response_data[-10:-2]
+status_word = response_data[-2:]
+
+print("📨 Response from card:")
+print(f"🔐 Encrypted Response Data: {enc_response.hex().upper()}")
+print(f"🧾 Response CMAC: {cmac_received.hex().upper()}")
+print(f"📟 Status Word: {status_word.hex().upper()}")
+
+# ----------------------------------------------------------------------------------
+# Step 2: Validate the CMAC
+# ----------------------------------------------------------------------------------
+
+print_a_break()
+print("🧾 Step 2: Reader Verifies CMAC of Response")
+
+cmac_input = TI + CmdCtr.to_bytes(2, "big") + enc_response + status_word
+cmac_obj = CMAC.new(session_key, ciphermod=AES)
+cmac_obj.update(cmac_input)
+expected_cmac = cmac_obj.digest()[:8]
+
+print(f"🧪 CMAC Input: TI || CmdCtr || ENC || Status")
+print(f"Data to MAC: {cmac_input.hex().upper()}")
+print(f"🔐 Calculated CMAC: {expected_cmac.hex().upper()}")
+print(f"📬 Received CMAC:   {cmac_received.hex().upper()}")
+
+if expected_cmac != cmac_received:
+    print("❌ CMAC mismatch – response may have been tampered with.")
+    sys.exit(1)
+else:
+    print("✅ CMAC verified – response integrity confirmed.")
+
+# ----------------------------------------------------------------------------------
+# Step 3: Decrypt the response data
+# ----------------------------------------------------------------------------------
+
+print_a_break()
+print("🔓 Step 3: Decrypt Response Data")
+
+# IV for response decryption: TI || CmdCtr || 0x01
+iv_input = TI + CmdCtr.to_bytes(2, "big") + b"\x01"
+cmac_obj = CMAC.new(session_key, ciphermod=AES)
+cmac_obj.update(iv_input)
+dec_iv = cmac_obj.digest()
+
+print(f"🧬 Response Decryption IV Input: {iv_input.hex().upper()}")
+print(f"🔑 Derived Decryption IV: {dec_iv.hex().upper()}")
+print(f"🔐 Session Key Used: {session_key.hex().upper()}")
+
+cipher = AES.new(session_key, AES.MODE_CBC, dec_iv)
+plaintext = unpad(cipher.decrypt(enc_response), AES.block_size)
+
+print(f"📦 Decrypted and Unpadded Response: {plaintext.hex().upper()}")
+
+# ----------------------------------------------------------------------------------
+# Step 4: Compare to Expected Data (from private_id)
+# ----------------------------------------------------------------------------------
+
+expected_data = private_id[:length_dec]
+
+print(f"\n📁 Expected File Content (from variable `private_id`): {expected_data.hex().upper()}")
+if plaintext == expected_data:
+    print("✅ Response matches expected file content – secure messaging worked correctly!")
+else:
+    print("❌ Data mismatch – something went wrong during encryption or CMAC verification.")
