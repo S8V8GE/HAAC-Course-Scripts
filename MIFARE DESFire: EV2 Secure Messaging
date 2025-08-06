@@ -46,6 +46,7 @@ from Crypto.Util.Padding import pad, unpad
 import os
 import binascii
 import struct
+import sys
 
 
 ####################################################################################################################
@@ -140,7 +141,7 @@ def print_a_break():
 master_key =    bytes.fromhex("D5A36CF065E7F4516748FB313187C6C8")           # Master Key (16 bytes)
 uid =           bytes.fromhex("805FDF2A4D0404")                             # UID (7 bytes)
 iv =            bytes.fromhex("00000000000000000000000000000000")           # IV (16 bytes)
-private_id =    bytes.fromhex("000000000000000000000000BEEFBABE")           # Private ID (16 bytes)
+private_id =    bytes.fromhex("000000000000000000000000BEEFCAFE")           # Private ID (16 bytes)
 aid =           bytes.fromhex("BADB01")                                     # Application ID (3 bytes)
 key_number =    bytes.fromhex("01")                                         # Key Number (1 byte)
 padding =       bytes.fromhex("0000000000000000000000000000000000000000")   # Padding (20 bytes)
@@ -355,7 +356,7 @@ print(f"Encrypted RndB: {enc_rndB.hex().upper()}")
 
 cmac_obj = CMAC.new(diversified_key, ciphermod=AES)
 cmac_obj.update(enc_rndB)
-cmac_card = cmac_obj.digest()[:8]
+cmac_card = cmac_obj.digest()[:8] # Truncated to 8 bytes per AN0945 Secure Messaging spec
 print(f"🧾 Card generates CMAC (8 bytes, AES-CMAC truncated): {cmac_card.hex().upper()}")
 
 card_response = enc_rndB + cmac_card
