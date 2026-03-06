@@ -24,7 +24,7 @@ To use the scripts, follow these steps:
    - Open PyCharm and create a new project with a "Welcome Script."  
 
 3️⃣ **Install Required Dependencies**  
-   - Open **Settings** → Expand **Project: (your project name)** → Select **Python Interpreter.**  
+   - Open **Settings** → Type in the search bar: **Interpreter.**  
    - Click the **"+"** button, then search for **"pycryptodome."**  
    - Select **"pycryptodome"** and click **"Install Package."**  
    - Once installation is complete, click **"Close"** → **"OK."**  
